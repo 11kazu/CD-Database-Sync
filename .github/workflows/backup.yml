@@ -2,8 +2,8 @@ name: Notion Database Backup
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 毎日日本時間の午前9時に自動実行
-  workflow_dispatch: # ボタン一つで手動実行できるようにする設定
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   backup:
@@ -20,10 +20,31 @@ jobs:
             -H "Content-Type: application/json" \
             --data '{}' > cd_backup.json
 
+      - name: Convert JSON to Markdown Table
+        run: |
+          python - <<EOF
+          import json
+          with open('cd_backup.json', 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          
+          with open('README.md', 'w', encoding='utf-8') as f:
+              f.write('# 💿 購入済みCDリスト\n\n')
+              f.write('| タイトル | アーティスト | 購入日 |\n')
+              f.write('| :--- | :--- | :--- |\n')
+              
+              for row in data.get('results', []):
+                  props = row.get('properties', {})
+                  # プロパティ名はNotionの実際の列名に合わせて調整が必要です
+                  title = props.get('タイトル', {}).get('title', [{}])[0].get('plain_text', '不明')
+                  artist = props.get('アーティスト', {}).get('rich_text', [{}])[0].get('plain_text', '-')
+                  date = props.get('購入日', {}).get('date', {}).get('start', '-')
+                  f.write(f'| {title} | {artist} | {date} |\n')
+          EOF
+
       - name: Commit and Push
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add cd_backup.json
-          git commit -m "chore: update notion backup [$(date +'%Y-%m-%d %H:%M:%S')]" || exit 0
+          git add cd_backup.json README.md
+          git commit -m "chore: update backup and list [$(date +'%Y-%m-%d %H:%M:%S')]" || exit 0
           git push
