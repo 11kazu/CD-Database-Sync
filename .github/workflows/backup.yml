@@ -35,24 +35,30 @@ jobs:
                   
                   results = data.get('results', [])
                   if not results:
-                      f.write('| データが見つかりませんでした | | |\n')
+                      f.write('| Notionからデータが届いていません | 接続設定を確認してください | |\n')
                   
                   for row in results:
                       props = row.get('properties', {})
                       
-                      # データの取り出し方をより詳細に指定
-                      t_prop = props.get('タイトル', {}).get('title', [])
-                      title = t_prop[0].get('plain_text', '不明') if t_prop else '不明'
-                      
+                      # 1. タイトル列（名前に関わらず'title'タイプを探す）
+                      title = "不明"
+                      for p in props.values():
+                          if p.get('type') == 'title':
+                              t_list = p.get('title', [])
+                              if t_list: title = t_list[0].get('plain_text', '不明')
+                              break
+
+                      # 2. アーティスト列（名前で指定）
                       a_prop = props.get('アーティスト', {}).get('rich_text', [])
                       artist = a_prop[0].get('plain_text', '-') if a_prop else '-'
                       
+                      # 3. 発売日列（名前で指定）
                       d_prop = props.get('発売日', {}).get('date')
-                      date_val = d_prop.get('start', '-') if d_prop else '-'
+                      date_val = d_prop.get('start', '-') if d_prop and d_prop.get('start') else '-'
                       
                       f.write(f'| {title} | {artist} | {date_val} |\n')
           except Exception as e:
-              print(f"Error: {e}")
+              f.write(f'| エラーが発生しました: {str(e)} | | |\n')
           EOF
 
       - name: Commit and Push
