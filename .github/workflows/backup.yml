@@ -24,21 +24,31 @@ jobs:
         run: |
           python - <<EOF
           import json
-          with open('cd_backup.json', 'r', encoding='utf-8') as f:
-              data = json.load(f)
-          
-          with open('README.md', 'w', encoding='utf-8') as f:
-              f.write('# 💿 購入済みCDリスト\n\n')
-              f.write('| タイトル | アーティスト | 購入日 |\n')
-              f.write('| :--- | :--- | :--- |\n')
+          try:
+              with open('cd_backup.json', 'r', encoding='utf-8') as f:
+                  data = json.load(f)
               
-              for row in data.get('results', []):
-                  props = row.get('properties', {})
-                  # プロパティ名はNotionの実際の列名に合わせて調整が必要です
-                  title = props.get('タイトル', {}).get('title', [{}])[0].get('plain_text', '不明')
-                  artist = props.get('アーティスト', {}).get('rich_text', [{}])[0].get('plain_text', '-')
-                  date = props.get('購入日', {}).get('date', {}).get('start', '-')
-                  f.write(f'| {title} | {artist} | {date} |\n')
+              with open('README.md', 'w', encoding='utf-8') as f:
+                  f.write('# 💿 購入済みCDリスト\n\n')
+                  f.write('| タイトル | アーティスト | 発売日 |\n')
+                  f.write('| :--- | :--- | :--- |\n')
+                  
+                  for row in data.get('results', []):
+                      props = row.get('properties', {})
+                      
+                      # 各列のデータを取得
+                      title_list = props.get('タイトル', {}).get('title', [])
+                      title = title_list[0].get('plain_text', '不明') if title_list else '不明'
+                      
+                      artist_list = props.get('アーティスト', {}).get('rich_text', [])
+                      artist = artist_list[0].get('plain_text', '-') if artist_list else '-'
+                      
+                      date = props.get('発売日', {}).get('date', {})
+                      date_val = date.get('start', '-') if date else '-'
+                      
+                      f.write(f'| {title} | {artist} | {date_val} |\n')
+          except Exception as e:
+              print(f"Error: {e}")
           EOF
 
       - name: Commit and Push
